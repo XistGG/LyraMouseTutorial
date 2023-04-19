@@ -1,0 +1,11 @@
+# Generated Build files
+/Binaries/*
+/Intermediate/*
+
+# Developer-specific IDE settings
+.idea
+.vs
+.vsconfig
+
+# Mac Finder settings
+.DS_Store
