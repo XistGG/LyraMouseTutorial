@@ -8,6 +8,12 @@ is implemented in Lyra 5.2, such that you have full control over
 your game's input mode and mouse capture settings.
 
 
+## Tutorial
+
+See the related
+[Tutorial: How to Take Control of the Mouse in Lyra](https://x157.github.io/UE5/LyraStarterGame/Tutorials/How-to-Take-Control-of-the-Mouse)
+
+
 ## Setup Notes
 
 ### Requirements
