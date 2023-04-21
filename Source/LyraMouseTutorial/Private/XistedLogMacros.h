@@ -1,4 +1,5 @@
 ﻿// Copyright 2023 xist.gg
+// @see https://github.com/XistGG/LyraMouseTutorial
 //
 // For more ideas about ways to format UE logs:
 // @see https://x157.github.io/UE5/Dev/DebuggingTips#XistLogFormat
