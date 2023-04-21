@@ -73,16 +73,16 @@ void UXistedInputDebugWidget::GetUIInputConfigData(FText& MouseCaptureModeText, 
 			switch (const EMouseCaptureMode MouseCaptureMode = GameViewportClient->GetMouseCaptureMode())
 			{
 			case EMouseCaptureMode::CapturePermanently:
-				MouseCaptureModeText = FText::FromString(TEXT("CapturePermanently"));
+				MouseCaptureModeText = FText::FromString(TEXT("Cap"));
 				break;
 			case EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("CapturePermanently_IncludingInitialMouseDown"));
+				MouseCaptureModeText = FText::FromString(TEXT("Cap+Initial"));
 				break;
 			case EMouseCaptureMode::CaptureDuringMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("CaptureDuringMouseDown"));
+				MouseCaptureModeText = FText::FromString(TEXT("Cap_LMD"));
 				break;
 			case EMouseCaptureMode::CaptureDuringRightMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("CaptureDuringRightMouseDown"));
+				MouseCaptureModeText = FText::FromString(TEXT("Cap_RMD"));
 				break;
 			case EMouseCaptureMode::NoCapture:
 				MouseCaptureModeText = FText::FromString(TEXT("NoCapture"));
@@ -94,11 +94,11 @@ void UXistedInputDebugWidget::GetUIInputConfigData(FText& MouseCaptureModeText, 
 
 			if (GameViewportClient->ShouldAlwaysLockMouse())
 			{
-				MouseLockModeText = FText::FromString(TEXT("Always Lock"));
+				MouseLockModeText = FText::FromString(TEXT("Always"));
 			}
 			else if (GameViewportClient->LockDuringCapture())
 			{
-				MouseLockModeText = FText::FromString(TEXT("Lock During Capture"));
+				MouseLockModeText = FText::FromString(TEXT("During Cap"));
 			}
 			else
 			{
