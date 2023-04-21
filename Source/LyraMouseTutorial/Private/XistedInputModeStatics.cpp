@@ -9,6 +9,13 @@
 
 void UXistedInputModeStatics::XistedSetInputMode(APlayerController* PlayerController, bool bMouseVisible, bool bIgnoreLookInput, bool bIgnoreMoveInput)
 {
+	// You must give us a valid PlayerController
+	if (!IsValid(PlayerController))
+	{
+		XISTED_ERROR_LOG(TEXT("PlayerController [%s] is not valid"), *GetNameSafe(PlayerController));
+		return;
+	}
+
 	// Make sure the controller is connected to a local player
 	const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
 	if (!LocalPlayer)
