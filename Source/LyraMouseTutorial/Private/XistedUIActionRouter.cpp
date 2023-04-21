@@ -1,4 +1,4 @@
-// Copyright 2023 xist.gg
+﻿// Copyright 2023 xist.gg
 // @see https://github.com/XistGG/LyraMouseTutorial
 
 #include "XistedUIActionRouter.h"
@@ -18,15 +18,33 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 	APlayerController* PC = LocalPlayer.GetPlayerController(GetWorld());
 	UGameViewportClient* GameViewportClient = LocalPlayer.ViewportClient;
 
-	// The input mode that was previously set
+	if (!GameViewportClient || !PC)
+	{
+		// Missing required components!  Can't do anything.
+		XISTED_ERROR_LOG(TEXT("Missing GameViewportClient (%s) or PC (%s)"),
+			BOOL2TEXT(!GameViewportClient), BOOL2TEXT(!PC));
+		return;
+	}
+
+	TSharedPtr<SViewport> ViewportWidget = GameViewportClient->GetGameViewportWidget();
+	if (!ViewportWidget)
+	{
+		// Missing game viewport widget!  Can't do anything.
+		XISTED_ERROR_LOG(TEXT("Failed to commit change! ViewportWidget is null."));
+		return;
+	}
+
+	// The input mode that was previously set.
+	// We're not actively using this, since we expect that it may not be accurate,
+	// but here it is if you want it.
 	const ECommonInputMode PreviousInputMode = GetActiveInputMode();
 
 	// Here we're comparing the new intended settings for look/move input ignore
 	// with the CURRENT PLAYER CONTROLLER settings, NOT WITH the ActiveInputConfig value,
 	// which may not necessarily reflect reality.
 
-	const bool bIsIgnoreLookChanged = PC && NewConfig.bIgnoreLookInput != PC->IsLookInputIgnored();
-	const bool bIsIgnoreMoveChanged = PC && NewConfig.bIgnoreMoveInput != PC->IsMoveInputIgnored();
+	const bool bIsIgnoreLookChanged = NewConfig.bIgnoreLookInput != PC->IsLookInputIgnored();
+	const bool bIsIgnoreMoveChanged = NewConfig.bIgnoreMoveInput != PC->IsMoveInputIgnored();
 
 	// Note FUIInputConfig's operator== DOES NOT INCLUDE Move/Look input ignore,
 	// but that is important to us so we explicitly check for it here
@@ -42,22 +60,6 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 		return;
 	}
 
-	if (!GameViewportClient || !PC)
-	{
-		// Missing required components!  Can't do anything.
-		XISTED_WARNING_LOG(TEXT("Missing GameViewportClient (%s) or PC (%s)"),
-			BOOL2TEXT(!GameViewportClient), BOOL2TEXT(!PC));
-		return;
-	}
-
-	TSharedPtr<SViewport> ViewportWidget = GameViewportClient->GetGameViewportWidget();
-	if (!ViewportWidget)
-	{
-		// Missing required component!  Can't do anything.
-		XISTED_WARNING_LOG(TEXT("Failed to commit change! ViewportWidget is null."));
-		return;
-	}
-
 	//////////////////////////////////////////////////////////////////////////
 	///  We have all of the data we need to set the new UI Input Config.
 	///  Set the new config now.
@@ -69,24 +71,29 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 		*StaticEnum<ECommonInputMode>()->GetValueAsString(NewConfig.GetInputMode()),
 		BOOL2TEXT(NewConfig.bIgnoreLookInput), BOOL2TEXT(NewConfig.bIgnoreMoveInput));
 
+	// Set ActiveInputConfig (this is the point of this entire method :)
 	ActiveInputConfig = NewConfig;
+
+	//////////////////////////////////////////////////////////////////////////
+	///  Now change Unreal Engine to actually use this config
+	//////////////////////////////////////////////////////////////////////////
 
 	auto isCaptured = [] (const EMouseCaptureMode& Mode) { return Mode == EMouseCaptureMode::CapturePermanently || Mode == EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown; };
 
 	const bool bWasPermanentlyCaptured = isCaptured(GameViewportClient->GetMouseCaptureMode());
 	const bool bIsPermanentlyCaptured = isCaptured(NewConfig.GetMouseCaptureMode());
 
+	// Lyra does stuff with this info, but we don't here.  You can use this if you like, or not.
 	const bool bHasPermanentCaptureModeChanged = bWasPermanentlyCaptured != bIsPermanentlyCaptured;
 
-	bool bShowCursor {false};
+	// Some settings differ based on whether or not the Player's mouse should be visible.
+	// To affect this, you need to call PC->SetShowMouseCursor *BEFORE* you call this->SetActiveUIInputConfig
+
 	bool bLockMouse {false};
 	EMouseLockMode MouseLockMode {EMouseLockMode::DoNotLock};
 
-	if (PC->ShouldShowMouseCursor())
-	{
-		bShowCursor = true;
-	}
-	else
+	const bool bShowCursor = PC->ShouldShowMouseCursor();
+	if (!bShowCursor)
 	{
 		// Pim exists and Cursor is Not Visible, lock mouse to viewport
 		bLockMouse = true;
@@ -133,11 +140,12 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 
 	if (NewConfig.bIgnoreLookInput)
 	{
-		XISTED_LOG(TEXT("Set Ignore Look Input for UI Config"));
 		PC->SetIgnoreLookInput(true);
 	}
 	else
 	{
+		// Note: SetIgnoreLookInput(false) does NOT reliably remove look input ignore settings,
+		// so instead we execute a complete reset
 		PC->ResetIgnoreLookInput();
 	}
 
@@ -145,19 +153,13 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 
 	if (NewConfig.bIgnoreMoveInput)
 	{
-		XISTED_LOG(TEXT("Set Ignore Move Input for UI Config"));
 		PC->SetIgnoreMoveInput(true);
 	}
 	else
 	{
+		// Note: SetIgnoreMoveInput(false) does NOT reliably remove move input ignore settings,
+		// so instead we execute a complete reset
 		PC->ResetIgnoreMoveInput();
-	}
-
-	// If the mouse cursor visibility state doesn't match the intended state, fix it:
-
-	if (PC->ShouldShowMouseCursor() != bShowCursor)
-	{
-		PC->SetShowMouseCursor(bShowCursor);
 	}
 
 	// Finally, broadcast OnActiveInputModeChanged
