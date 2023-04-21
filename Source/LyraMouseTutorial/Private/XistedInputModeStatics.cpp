@@ -40,7 +40,7 @@ void UXistedInputModeStatics::XistedSetInputMode(APlayerController* PlayerContro
 	{
 		// Input settings when mouse is Visible
 		constexpr bool bHideCursorDuringViewportCapture = false;
-		NewInputConfig = FUIInputConfig(ECommonInputMode::All, EMouseCaptureMode::NoCapture, bHideCursorDuringViewportCapture);
+		NewInputConfig = FUIInputConfig(ECommonInputMode::All, EMouseCaptureMode::CaptureDuringMouseDown, bHideCursorDuringViewportCapture);
 	}
 	else
 	{
