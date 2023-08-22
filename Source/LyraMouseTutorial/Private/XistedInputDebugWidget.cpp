@@ -74,16 +74,16 @@ void UXistedInputDebugWidget::GetUIInputConfigData(FText& MouseCaptureModeText, 
 			switch (const EMouseCaptureMode MouseCaptureMode = GameViewportClient->GetMouseCaptureMode())
 			{
 			case EMouseCaptureMode::CapturePermanently:
-				MouseCaptureModeText = FText::FromString(TEXT("Cap"));
+				MouseCaptureModeText = FText::FromString(TEXT("CapPerm"));
 				break;
 			case EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("Cap+Initial"));
+				MouseCaptureModeText = FText::FromString(TEXT("CapPermInit"));
 				break;
 			case EMouseCaptureMode::CaptureDuringMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("Cap_LMD"));
+				MouseCaptureModeText = FText::FromString(TEXT("CapDuringMD"));
 				break;
 			case EMouseCaptureMode::CaptureDuringRightMouseDown:
-				MouseCaptureModeText = FText::FromString(TEXT("Cap_RMD"));
+				MouseCaptureModeText = FText::FromString(TEXT("CapDurRMDOnly"));
 				break;
 			case EMouseCaptureMode::NoCapture:
 				MouseCaptureModeText = FText::FromString(TEXT("NoCapture"));
