@@ -1,4 +1,4 @@
-﻿// Copyright 2023 xist.gg
+﻿// Copyright 2023-2025 Xist.GG LLC
 // @see https://github.com/XistGG/LyraMouseTutorial
 
 #include "XistedUIActionRouter.h"
@@ -7,10 +7,12 @@
 #include "Widgets/SViewport.h"
 
 
-void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, bool bForceRefresh)
+void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& InNewConfig, bool bForceRefresh)
 {
 	// DO NOT CALL SUPER !! Instead, this is a COMPLETE OVERRIDE of the base functionality
 	//-Super::ApplyUIInputConfig(NewConfig, bForceRefresh);
+
+	FUIInputConfig NewConfig = InNewConfig;
 
 	ULocalPlayer& LocalPlayer = *GetLocalPlayerChecked();
 
@@ -21,7 +23,7 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 	if (!GameViewportClient || !PC)
 	{
 		// Missing required components!  Can't do anything.
-		XISTED_ERROR_LOG(TEXT("Missing GameViewportClient (%s) or PC (%s)"),
+		UE_LOG(LogXimUIActionRouter, Warning, TEXT("Missing GameViewportClient (%s) or PC (%s)"),
 			BOOL2TEXT(!GameViewportClient), BOOL2TEXT(!PC));
 		return;
 	}
@@ -30,31 +32,23 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 	if (!ViewportWidget)
 	{
 		// Missing game viewport widget!  Can't do anything.
-		XISTED_ERROR_LOG(TEXT("Failed to commit change! ViewportWidget is null."));
+		UE_LOG(LogXimUIActionRouter, Error, TEXT("Failed to commit change! ViewportWidget is null."));
 		return;
 	}
 
-	// The input mode that was previously set.
-	// We're not actively using this, since we expect that it may not be accurate,
-	// but here it is if you want it.
-	const ECommonInputMode PreviousInputMode = GetActiveInputMode();
+	// Compute some things based on desired mouse cursor visibility
+	const bool bShowCursor = NewConfig.GetInputMode() != ECommonInputMode::Game;
+	if (bShowCursor)
+	{
+		// Force bIgnoreLookInput when showing the mouse cursor
+		NewConfig.bIgnoreLookInput = true;
+	}
 
-	// Here we're comparing the new intended settings for look/move input ignore
-	// with the CURRENT PLAYER CONTROLLER settings, NOT WITH the ActiveInputConfig value,
-	// which may not necessarily reflect reality.
+	// Is the NewConfig the same as the current input mode?
+	// This requires there to BE an active input config in the first place, which there may not be.
+	const bool bIsSameAsActiveInputConfig = ActiveInputConfig.IsSet() && NewConfig == ActiveInputConfig.GetValue();
 
-	const bool bIsIgnoreLookChanged = NewConfig.bIgnoreLookInput != PC->IsLookInputIgnored();
-	const bool bIsIgnoreMoveChanged = NewConfig.bIgnoreMoveInput != PC->IsMoveInputIgnored();
-
-	// Note FUIInputConfig's operator== DOES NOT INCLUDE Move/Look input ignore,
-	// but that is important to us so we explicitly check for it here
-
-	const bool bIsInputChanged = !ActiveInputConfig.IsSet()
-	                          || NewConfig != ActiveInputConfig.GetValue()
-	                          || bIsIgnoreLookChanged
-	                          || bIsIgnoreMoveChanged;
-
-	if (!bForceRefresh && !bIsInputChanged)
+	if (!bForceRefresh && bIsSameAsActiveInputConfig)
 	{
 		// Nothing to do!  Early out.
 		return;
@@ -65,11 +59,21 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 	///  Set the new config now.
 	//////////////////////////////////////////////////////////////////////////
 
-	XISTED_DISPLAY_LOG(TEXT("UIInputConfig being changed. bForceRefresh: %s"), BOOL2TEXT(bForceRefresh));
-	XISTED_DISPLAY_LOG(TEXT("\tInputMode: Previous (%s), New (%s), IgnoreLook=%s IgnoreMove=%s"),
-		ActiveInputConfig.IsSet() ? *StaticEnum<ECommonInputMode>()->GetValueAsString(ActiveInputConfig->GetInputMode()) : TEXT("None"),
-		*StaticEnum<ECommonInputMode>()->GetValueAsString(NewConfig.GetInputMode()),
-		BOOL2TEXT(NewConfig.bIgnoreLookInput), BOOL2TEXT(NewConfig.bIgnoreMoveInput));
+	UE_LOG(LogXimUIActionRouter, Display, TEXT("UIInputConfig being changed. bForceRefresh: %s"), BOOL2TEXT(bForceRefresh));
+	UE_LOG(LogXimUIActionRouter, Display, TEXT("\tInputMode: Previous (%s), New (%s)"),
+		ActiveInputConfig.IsSet() ? LexToString(ActiveInputConfig->GetInputMode()) : TEXT("None"),
+		LexToString(NewConfig.GetInputMode()));
+
+#if WITH_XIM_INPUT_DEBUG
+	TArray<FString> NewConfigDebugLines;
+	constexpr bool bCullEmpty = true;
+	NewConfig.ToString().ParseIntoArrayLines(OUT NewConfigDebugLines, bCullEmpty);
+
+	for (const FString& DebugString : NewConfigDebugLines)
+	{
+		UE_LOG(LogXimUIActionRouter, Log, TEXT("\t\t%s"), *DebugString);
+	}
+#endif
 
 	// Set ActiveInputConfig (this is the point of this entire method :)
 	ActiveInputConfig = NewConfig;
@@ -86,21 +90,13 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 	// Lyra does stuff with this info, but we don't here.  You can use this if you like, or not.
 	const bool bHasPermanentCaptureModeChanged = bWasPermanentlyCaptured != bIsPermanentlyCaptured;
 
-	// Some settings differ based on whether or not the Player's mouse should be visible.
-	// To affect this, you need to call PC->SetShowMouseCursor *BEFORE* you call this->SetActiveUIInputConfig
+	// Some settings differ based on whether the Player's mouse should be visible.
 
-	bool bLockMouse {false};
-	EMouseLockMode MouseLockMode {EMouseLockMode::DoNotLock};
+	const EMouseLockMode MouseLockMode = bShowCursor
+		? EMouseLockMode::DoNotLock  // don't lock when cursor is visible
+		: EMouseLockMode::LockAlways;  // do lock when cursor is invisible
 
-	const bool bShowCursor = PC->ShouldShowMouseCursor();
-	if (!bShowCursor)
-	{
-		// Pim exists and Cursor is Not Visible, lock mouse to viewport
-		bLockMouse = true;
-
-		// Cursor is invisible, lock it in place
-		MouseLockMode = EMouseLockMode::LockAlways;
-	}
+	PC->SetShowMouseCursor(bShowCursor);
 
 	GameViewportClient->SetMouseCaptureMode(NewConfig.GetMouseCaptureMode());
 	GameViewportClient->SetHideCursorDuringCapture(NewConfig.HideCursorDuringViewportCapture() && !ShouldAlwaysShowCursor());
@@ -116,16 +112,18 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 
 	// Lock or Unlock the mouse
 
-	if (bLockMouse)
+	if (!bShowCursor)
 	{
+		// invisible cursor, lock mouse to viewport
 		SlateOperations.LockMouseToWidget(ViewportWidgetRef);
 	}
 	else
 	{
+		// visible cursor, let the user put it where they want
 		SlateOperations.ReleaseMouseLock();
 	}
 
-	// Capture or Uncapture the mouse
+	// Capture or Release the mouse
 
 	if (bIsPermanentlyCaptured)
 	{
@@ -164,6 +162,6 @@ void UXistedUIActionRouter::ApplyUIInputConfig(const FUIInputConfig& NewConfig, 
 
 	// Finally, broadcast OnActiveInputModeChanged
 
-	XISTED_LOG(TEXT("Broadcast Event: OnActiveInputModeChanged"));
+	UE_LOG(LogXimUIActionRouter, Verbose, TEXT("Broadcast Event: OnActiveInputModeChanged"));
 	OnActiveInputModeChanged().Broadcast(NewConfig.GetInputMode());
 }

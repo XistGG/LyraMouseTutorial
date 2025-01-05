@@ -1,4 +1,4 @@
-﻿// Copyright 2023 xist.gg
+﻿// Copyright 2023-2025 Xist.GG LLC
 // @see https://github.com/XistGG/LyraMouseTutorial
 
 #include "XistedInputModeStatics.h"
@@ -7,55 +7,37 @@
 #include "XistedUIActionRouter.h"
 
 
-void UXistedInputModeStatics::XistedSetInputMode(APlayerController* PlayerController, bool bMouseVisible, bool bIgnoreLookInput, bool bIgnoreMoveInput)
+void UXistedInputModeStatics::XistedSetInputMode(const APlayerController* PlayerController, const ECommonInputMode& CommonInputMode);
 {
-	// You must give us a valid PlayerController
-	if (!IsValid(PlayerController))
-	{
-		XISTED_ERROR_LOG(TEXT("PlayerController [%s] is not valid"), *GetNameSafe(PlayerController));
-		return;
-	}
+	check(PlayerController);
 
-	// Make sure the controller is connected to a local player
 	const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
 	if (!LocalPlayer)
 	{
-		XISTED_ERROR_LOG(TEXT("LocalPlayer is null"));
+		UE_LOG(LogXimUI, Error, TEXT("Cannot SetInputMode for non-local player [%s]"), *PlayerController->GetName());
 		return;
 	}
 
-	// We only need the base action router, not our custom one, though none of this
-	// will work the way we want if this hasn't been overridden to use our custom
-	// action router subsystem.
 	UCommonUIActionRouterBase* ActionRouter = LocalPlayer->GetSubsystem<UCommonUIActionRouterBase>();
 	if (!ActionRouter)
 	{
-		XISTED_ERROR_LOG(TEXT("Common UI Action Router subsystem is not available"));
+		UE_LOG(LogXimUI, Error, TEXT("CommonUIActionRouter is not available, cannot SetInputMode"));
 		return;
 	}
 
-	// Create the new desired UI Input Config
-	FUIInputConfig NewInputConfig;
-	if (bMouseVisible)
+	FUIInputConfig InputConfig;
+	if (CommonInputMode == ECommonInputMode::Game)
 	{
-		// Input settings when mouse is Visible
-		constexpr bool bHideCursorDuringViewportCapture = false;
-		NewInputConfig = FUIInputConfig(ECommonInputMode::All, EMouseCaptureMode::CaptureDuringMouseDown, bHideCursorDuringViewportCapture);
+		// Game mode means invisible mouse, permanently captured
+		constexpr bool bHideCursorDuringViewportCapture = true;
+		InputConfig = FUIInputConfig(CommonInputMode, EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown, bHideCursorDuringViewportCapture);
 	}
 	else
 	{
-		// Input settings when mouse is Invisible
-		constexpr bool bHideCursorDuringViewportCapture = true;
-		NewInputConfig = FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown, bHideCursorDuringViewportCapture);
+		// Menu or All modes mean visible mouse, not permanently captured
+		constexpr bool bHideCursorDuringViewportCapture = false;
+		InputConfig = FUIInputConfig(CommonInputMode, EMouseCaptureMode::CaptureDuringMouseDown, bHideCursorDuringViewportCapture);
 	}
 
-	// Apply Look/Move ignore switches
-	NewInputConfig.bIgnoreLookInput = bIgnoreLookInput;
-	NewInputConfig.bIgnoreMoveInput = bIgnoreMoveInput;
-
-	// Set mouse visibility just *before* we change the UI Input Config
-	PlayerController->SetShowMouseCursor(bMouseVisible);
-
-	// Tell the Action Router to use this new input config
-	ActionRouter->SetActiveUIInputConfig(NewInputConfig);
+	ActionRouter->SetActiveUIInputConfig(InputConfig);
 }

@@ -1,10 +1,13 @@
-﻿// Copyright 2023 xist.gg
+﻿// Copyright 2023-2025 Xist.GG LLC
 // @see https://github.com/XistGG/LyraMouseTutorial
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "XistedInputModeStatics.generated.h"
+
+
+enum class ECommonInputMode : uint8;
 
 
 /**
@@ -21,13 +24,11 @@ class LYRAMOUSETUTORIAL_API UXistedInputModeStatics : public UBlueprintFunctionL
 
 public:
 	/**
-	 * Set a new Input Mode for this player
-	 * @param PlayerController Player Controller whose input mode to set
-	 * @param bMouseVisible Whether the mouse should be visible (true) or invisible (false)
-	 * @param bIgnoreLookInput Whether look input should now be ignored
-	 * @param bIgnoreMoveInput Whether move input should now be ignored
+	 * Set a new UI Input Mode
+	 * @param PlayerController Must be the local player's controller, or an exception will be thrown
+	 * @param CommonInputMode The new input mode to set
 	 */
 	UFUNCTION(BlueprintCallable)
-	static void XistedSetInputMode(APlayerController* PlayerController, bool bMouseVisible, bool bIgnoreLookInput, bool bIgnoreMoveInput);
+	static void XistedSetInputMode(const APlayerController* PlayerController, const ECommonInputMode& CommonInputMode);
 
 };

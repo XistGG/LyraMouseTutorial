@@ -1,4 +1,4 @@
-﻿// Copyright 2023 xist.gg
+﻿// Copyright 2023-2025 Xist.GG LLC
 // @see https://github.com/XistGG/LyraMouseTutorial
 //
 // For more ideas about ways to format UE logs:
@@ -13,8 +13,8 @@
 
 #define BOOL2TEXT(b)  ((b) ? *TrueString : *FalseString)
 
-EXTERN_C const FString FalseString;
-EXTERN_C const FString TrueString;
+extern const FString FalseString;
+extern const FString TrueString;
 
 
 /**

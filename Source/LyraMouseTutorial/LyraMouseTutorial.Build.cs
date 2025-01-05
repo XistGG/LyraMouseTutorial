@@ -1,4 +1,4 @@
-﻿// Copyright 2023 xist.gg
+﻿// Copyright 2023-2025 Xist.GG LLC
 // @see https://github.com/XistGG/LyraMouseTutorial
 
 using UnrealBuildTool;
